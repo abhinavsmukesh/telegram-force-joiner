@@ -1,11 +1,10 @@
-import os
 import logging
 from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    ChatPermissions
 )
+from telegram.constants import ParseMode
 from telegram.ext import (
     ApplicationBuilder,
     CallbackQueryHandler,
@@ -18,10 +17,8 @@ from telegram.ext import (
 # 🔐 ADD YOUR DETAILS HERE
 # ==============================
 
-BOT_TOKEN = "8777999221:AAEU_u9yAgkq9zAD5YpJDdRVWs2AgTf6DT4"  # <-- PUT YOUR TOKEN HERE
-
-CHANNEL_USERNAME = "swiggytrick"  
-# 👆 WITHOUT @
+BOT_TOKEN = "8777999221:AAEU_Ug0ljN-7rKm9dAZJ6NjRbL26Uy2Vdk"
+CHANNEL_USERNAME = "swiggytrick"  # WITHOUT @
 
 # ==============================
 # Logging
@@ -33,7 +30,7 @@ logging.basicConfig(
 )
 
 # ==============================
-# FORCE JOIN CHECK (Every Message)
+# FORCE JOIN CHECK
 # ==============================
 
 async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,16 +51,19 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Delete user's message
             await update.message.delete()
 
+            # Clickable mention
+            mention = f'<a href="tg://user?id={user.id}">{user.first_name}</a>'
+
             keyboard = [
                 [
                     InlineKeyboardButton(
-                        "📢 Join Channel",
+                        "📢 Subscribe to channel",
                         url=f"https://t.me/{CHANNEL_USERNAME}"
                     )
                 ],
                 [
                     InlineKeyboardButton(
-                        "✅ I Joined",
+                        "✅ OK | I subscribed",
                         callback_data="verify_join"
                     )
                 ]
@@ -71,17 +71,27 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             reply_markup = InlineKeyboardMarkup(keyboard)
 
+            text = (
+                f"{mention} to be accepted in the group, "
+                f"please subscribe to our channel.\n"
+                f"Once joined, click the button below.\n\n"
+                f"Action: Muted 🔇"
+            )
+
             await context.bot.send_message(
                 chat_id=chat_id,
-                text="🔒 You must join our channel to send messages in this group.",
-                reply_markup=reply_markup
+                text=text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                disable_web_page_preview=True
             )
 
     except Exception as e:
         logging.error(e)
 
+
 # ==============================
-# Verify Button
+# VERIFY BUTTON
 # ==============================
 
 async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -95,12 +105,15 @@ async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if member.status in ["member", "administrator", "creator"]:
         await query.answer("✅ Verified! You can now chat.")
-        await query.message.edit_text("✅ You are verified and can now send messages.")
+        await query.message.edit_text(
+            "✅ You are verified and can now send messages."
+        )
     else:
         await query.answer("❌ Please join the channel first.", show_alert=True)
 
+
 # ==============================
-# Main
+# MAIN
 # ==============================
 
 def main():
@@ -112,5 +125,6 @@ def main():
     print("Force Join Bot Running...")
     app.run_polling()
 
-if __name__ == "__main__":
+
+if name == "main":
     main()
