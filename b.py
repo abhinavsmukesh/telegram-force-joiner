@@ -17,7 +17,7 @@ from telegram.ext import (
 # 🔐 ADD YOUR DETAILS HERE
 # ==============================
 
-BOT_TOKEN = "8777999221:AAG4lPrI9zbFzkXWoRoy5jOSnqcg1RcgB-U"
+BOT_TOKEN = "8777999221:AAHGxKFOmKg4WhtdUT1dA2jt8DHjNG6fjM4"
 CHANNEL_USERNAME = "swiggytrick"  # WITHOUT @
 
 # ==============================
@@ -35,10 +35,12 @@ logging.basicConfig(
 
 async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    chat_id = update.effective_chat.id
+    message = update.effective_message
 
-    if user.is_bot:
+    if not user or user.is_bot or not message:
         return
+
+    chat_id = message.chat_id
 
     try:
         member = await context.bot.get_chat_member(
@@ -48,11 +50,16 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if member.status not in ["member", "administrator", "creator"]:
 
-            # Delete user's message
-            await update.message.delete()
+            # Delete user message
+            await message.delete()
 
-            # Clickable mention
-            mention = f'<a href="tg://user?id={user.id}">{user.first_name}</a>'
+            # Proper clickable mention
+            if user.username:
+                display_name = f"@{user.username}"
+            else:
+                display_name = user.first_name
+
+            mention = f'<a href="tg://user?id={user.id}">{display_name}</a>'
 
             keyboard = [
                 [
@@ -72,7 +79,7 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             text = (
-                f"{mention} to be accepted in the group, "
+                f"{mention} to be accepted in the group,\n"
                 f"please subscribe to our channel.\n"
                 f"Once joined, click the button below.\n\n"
                 f"Action: Muted 🔇"
@@ -98,18 +105,23 @@ async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user = query.from_user
 
-    member = await context.bot.get_chat_member(
-        f"@{CHANNEL_USERNAME}",
-        user.id
-    )
+    await query.answer()
 
-    if member.status in ["member", "administrator", "creator"]:
-        await query.answer("✅ Verified! You can now chat.")
-        await query.message.edit_text(
-            "✅ You are verified and can now send messages."
+    try:
+        member = await context.bot.get_chat_member(
+            f"@{CHANNEL_USERNAME}",
+            user.id
         )
-    else:
-        await query.answer("❌ Please join the channel first.", show_alert=True)
+
+        if member.status in ["member", "administrator", "creator"]:
+            await query.message.edit_text(
+                "✅ You are verified and can now send messages."
+            )
+        else:
+            await query.answer("❌ Please join the channel first.", show_alert=True)
+
+    except Exception as e:
+        logging.error(e)
 
 
 # ==============================
@@ -119,14 +131,16 @@ async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(MessageHandler(filters.ALL & ~filters.StatusUpdate.ALL, force_join))
-    app.add_handler(CallbackQueryHandler(verify_join, pattern="verify_join"))
+    app.add_handler(
+        MessageHandler(filters.ALL & ~filters.StatusUpdate.ALL, force_join)
+    )
+    app.add_handler(
+        CallbackQueryHandler(verify_join, pattern="verify_join")
+    )
 
     print("Force Join Bot Running...")
     app.run_polling()
 
 
-if __name__ == "__main__":
+if __name__ == "main":
     main()
-
-
