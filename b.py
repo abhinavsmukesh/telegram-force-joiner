@@ -17,7 +17,7 @@ from telegram.ext import (
 # 🔐 ADD YOUR DETAILS HERE
 # ==============================
 
-BOT_TOKEN = "8777999221:AAEU_Ug0ljN-7rKm9dAZJ6NjRbL26Uy2Vdk"
+BOT_TOKEN = "8777999221:AAG4lPrI9zbFzkXWoRoy5jOSnqcg1RcgB-U"
 CHANNEL_USERNAME = "swiggytrick"  # WITHOUT @
 
 # ==============================
@@ -128,4 +128,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
