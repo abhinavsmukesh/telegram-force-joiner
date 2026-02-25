@@ -1,5 +1,21 @@
-import logging
+"""
+==================================================
+  Professional Telegram Force Join Bot
+==================================================
+
+FEATURES:
+✔ Force channel join before messaging
+✔ Auto mute non-members
+✔ Clean HTML mention (real name)
+✔ Auto-delete warning message
+✔ Secure environment variable token
+✔ Production-ready logging
+==================================================
+"""
+
+import os
 import asyncio
+import logging
 from html import escape
 
 from telegram import (
@@ -14,29 +30,31 @@ from telegram.ext import (
     CallbackQueryHandler,
     MessageHandler,
     ContextTypes,
-    filters
+    filters,
 )
 
-# ==============================
-# 🔐 CONFIGURATION
-# ==============================
+# ==================================================
+# 🔐 CONFIGURATION (EDIT THESE ONLY)
+# ==================================================
 
-BOT_TOKEN = "8777999221:AAHGxKFOmKg4WhtdUT1dA2jt8DHjNG6fjM4"
+BOT_TOKEN = os.getenv("8777999221:AAHGxKFOmKg4WhtdUT1dA2jt8DHjNG6fjM4")  # Set in Render/VPS
 CHANNEL_USERNAME = "swiggytrick"  # WITHOUT @
-WARNING_DELETE_TIME = 20  # seconds
+WARNING_DELETE_TIME = 20  # Seconds before warning auto deletes
 
-# ==============================
+# ==================================================
 # LOGGING
-# ==============================
+# ==================================================
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
 
-# ==============================
-# FORCE JOIN CHECK
-# ==============================
+logger = logging.getLogger(__name__)
+
+# ==================================================
+# FORCE JOIN CHECK (Runs on every message)
+# ==================================================
 
 async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -54,23 +72,19 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if member.status not in ["member", "administrator", "creator"]:
 
-            # 🔇 Restrict user (real mute)
+            # 🔇 Restrict (mute)
             await context.bot.restrict_chat_member(
                 chat.id,
                 user.id,
                 permissions=ChatPermissions(can_send_messages=False)
             )
 
-            # Delete user's message
+            # Delete user message
             await message.delete()
 
-            # Safe display name
-            if user.username:
-                display_name = "@" + escape(user.username)
-            else:
-                display_name = escape(user.full_name)
-
-            mention = f'<a href="tg://user?id={user.id}">{display_name}</a>'
+            # Proper clickable name mention
+            safe_name = escape(user.full_name)
+            mention = f'<a href="tg://user?id={user.id}">{safe_name}</a>'
 
             keyboard = [
                 [
@@ -90,9 +104,9 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             text = (
-                f"🔒 <b>Membership Required</b>\n\n"
-                f"{mention}, to participate in this group,\n"
-                f"please subscribe to our official channel.\n\n"
+                f"🔒 <b>Channel Membership Required</b>\n\n"
+                f"{mention}, you must join our official channel "
+                f"to send messages in this group.\n\n"
                 f"After joining, press the button below.\n\n"
                 f"🔇 <b>Status:</b> Muted"
             )
@@ -105,7 +119,7 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 disable_web_page_preview=True
             )
 
-            # Auto delete warning after X seconds
+            # Auto-delete warning
             await asyncio.sleep(WARNING_DELETE_TIME)
             try:
                 await warning.delete()
@@ -113,11 +127,11 @@ async def force_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
     except Exception as e:
-        logging.error(f"Force join error: {e}")
+        logger.error(f"Force join error: {e}")
 
-# ==============================
-# VERIFY BUTTON
-# ==============================
+# ==================================================
+# VERIFY BUTTON HANDLER
+# ==================================================
 
 async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -134,7 +148,7 @@ async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if member.status in ["member", "administrator", "creator"]:
 
-            # 🔓 Unmute user
+            # 🔓 Unmute
             await context.bot.restrict_chat_member(
                 chat.id,
                 user.id,
@@ -145,6 +159,7 @@ async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     can_add_web_page_previews=True
                 )
             )
+
             await query.message.edit_text(
                 "✅ <b>Verification Successful</b>\n\n"
                 "You can now send messages in this group.",
@@ -158,13 +173,16 @@ async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
     except Exception as e:
-        logging.error(f"Verify error: {e}")
+        logger.error(f"Verification error: {e}")
 
-# ==============================
-# MAIN
-# ==============================
+# ==================================================
+# MAIN APPLICATION
+# ==================================================
 
 def main():
+    if not BOT_TOKEN:
+        raise ValueError("BOT_TOKEN environment variable not set!")
+
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(
@@ -175,9 +193,12 @@ def main():
         CallbackQueryHandler(verify_join, pattern="verify_join")
     )
 
-    print("🚀 Professional Force Join Bot Running...")
+    logger.info("🚀 Professional Force Join Bot Running...")
     app.run_polling()
 
-if __name__ == "main":
-    main()
+# ==================================================
+# ENTRY POINT
+# ==================================================
 
+if __name__ == "__main__":
+    main()
